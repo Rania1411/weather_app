@@ -6,253 +6,141 @@ import {
   Droplets,
   Gauge,
   Eye,
+  Sun,
+  CloudRain,
+  Sunrise,
+  Sunset,
+  ArrowUp,
+  ArrowDown,
+  Star,
 } from "lucide-react";
+import Panel from "./Panel";
+import StatTile from "./StatTile";
+import { formatTemp, formatWind } from "../utils/units";
+import { describeUv, formatFullDate, formatHour, getWeatherInfo } from "../utils/weather";
 
-const WeatherCard = ({
-  city,
-  country,
-  temperature,
-  feelsLike,
-  windspeed,
-  weathercode,
-  date,
-  humidity,
-  pressure,
-  visibility,
-}) => {
-  const getWeatherDescription = (code) => {
-    const weatherCodes = {
-      0: "Clear Sky",
-      1: "Mainly Clear",
-      2: "Partly Cloudy",
-      3: "Overcast",
-      45: "Foggy",
-      48: "Depositing Rime Fog",
-      51: "Drizzle: Light",
-      53: "Drizzle: Moderate",
-      55: "Drizzle: Dense",
-      61: "Rain: Slight",
-      63: "Rain: Moderate",
-      65: "Rain: Heavy",
-      71: "Snow Fall: Slight",
-      73: "Snow Fall: Moderate",
-      75: "Snow Fall: Heavy",
-      80: "Rain Showers: Slight",
-      81: "Rain Showers: Moderate",
-      82: "Rain Showers: Violent",
-      95: "Thunderstorm",
-      96: "Thunderstorm with Hail",
-      99: "Thunderstorm with Heavy Hail",
-    };
+const SUN_CLASS =
+  "fill-yellow-300 text-yellow-200 drop-shadow-[0_0_25px_rgba(255,220,80,0.5)]";
+const ICON_SIZE = "size-32 sm:size-48";
 
-    return weatherCodes[code] || "Unknown Weather";
-  };
+const HeroIcon = ({ code }) => {
+  if (code === 0 || code === 1) {
+    return <SunMedium strokeWidth={1.2} className={`${ICON_SIZE} ${SUN_CLASS}`} aria-hidden="true" />;
+  }
 
-  const weatherDesc = getWeatherDescription(weathercode);
+  if (code === 2 || code === 3) {
+    return (
+      <div className="relative">
+        <SunMedium
+          strokeWidth={1.2}
+          className={`absolute -right-3 -top-5 ${ICON_SIZE} ${SUN_CLASS}`}
+          aria-hidden="true"
+        />
+        <Cloud
+          strokeWidth={1.2}
+          className={`relative ${ICON_SIZE} fill-white text-white drop-shadow-xl`}
+          aria-hidden="true"
+        />
+      </div>
+    );
+  }
 
-  const isSunny = weathercode === 0 || weathercode === 1;
-  const isCloudy = weathercode === 2 || weathercode === 3;
+  const { icon: Icon } = getWeatherInfo(code);
+  return (
+    <Icon strokeWidth={1.2} className={`${ICON_SIZE} text-white drop-shadow-xl`} aria-hidden="true" />
+  );
+};
+
+const WeatherCard = ({ weather, units, isFavorite, onToggleFavorite }) => {
+  const { city, country, current, daily } = weather;
+  const today = daily[0];
+  const { label } = getWeatherInfo(current.code);
+
+  const stats = [
+    { icon: Droplets, label: "Humidity", value: current.humidity != null && `${current.humidity}%` },
+    { icon: Wind, label: "Wind", value: current.windSpeed != null && formatWind(current.windSpeed, units.wind) },
+    { icon: Gauge, label: "Pressure", value: current.pressure != null && `${current.pressure} hPa` },
+    { icon: Eye, label: "Visibility", value: current.visibility != null && `${current.visibility} km` },
+    { icon: Sun, label: "UV index", value: today.uvIndex != null && String(today.uvIndex), hint: describeUv(today.uvIndex) },
+    { icon: CloudRain, label: "Rain chance", value: today.rainChance != null && `${today.rainChance}%` },
+    { icon: Sunrise, label: "Sunrise", value: formatHour(today.sunrise) },
+    { icon: Sunset, label: "Sunset", value: formatHour(today.sunset) },
+  ];
 
   return (
     <>
-    <div className="relative mx-auto mt-4 w-[960px]
-    overflow-hidden mr-3 h-[350px] rounded-[28px] border border-white/20 bg-white/10 p-8 text-white shadow-2xl backdrop-blur-xxl">
+      <Panel
+        id="today"
+        aria-labelledby="current-heading"
+        className="relative scroll-mt-6 overflow-hidden p-6 shadow-2xl sm:p-8"
+      >
+        <div className="pointer-events-none absolute inset-0 bg-linear-to-br from-blue-500/20 via-indigo-500/10 to-white/10" />
 
-    
-      <div className="pointer-events-none absolute inset-0 bg-gradient-to-br from-blue-500/20 via-indigo-500/10 to-white/10" />
-
-      <div className="relative z-10 gap-2">
-
-     
-        <div className="flex items-center justify-between ">
-
-          <div>
-            <h2 className="text-3xl font-semibold tracking-wide">
-              {city}, {country}
-            </h2>
-
-            <p className="mt-2 text-md text-white/70">
-              {date.toLocaleDateString("en-US", {
-                weekday: "long",
-                month: "long",
-                day: "numeric",
-              })}
-              {" • "}
-              {date.toLocaleTimeString("en-US", {
-                hour: "numeric",
-                minute: "2-digit",
-              })}
-            </p>
-          </div>
-
-        </div>
-
-
-      
-        <div className="relative mt-[-6px] min-h-[270px]">
-
-    
-          <div className="pt-3">
-
-            <div className="flex items-start">
-              <span className="text-[125px] font-light leading-none tracking-tight">
-                {temperature !== undefined
-                  ? Math.round(temperature)
-                  : "--"}
-              </span>
-
-              <span className="mt-4 text-3xl font-light">
-                °C
-              </span>
+        <div className="relative z-10">
+          <div className="flex items-start justify-between gap-3">
+            <div>
+              <h1 id="current-heading" className="text-2xl font-semibold tracking-wide sm:text-3xl">
+                {city}, {country}
+              </h1>
+              <p className="mt-2 text-white/70">{formatFullDate(current.time)}</p>
             </div>
-
-            <p className="mt-4 text-2xl font-medium">
-              {weatherDesc}
-            </p>
-
-            <div className="mt-4 flex items-center gap-2 text-md text-white/80">
-              <Thermometer size={20} />
-              <span>
-                Feels like{" "}
-                {temperature !== undefined
-                  ? Math.round(temperature)
-                  : "--"}
-                °
-              </span>
-            </div>
-
-          </div>
-
-
-          <div className="absolute right-5 top-[-12px]">
-
-            {isSunny && (
-              <SunMedium
-                size={200}
-                strokeWidth={1.2}
-                className="fill-yellow-300 text-yellow-200 drop-shadow-[0_0_25px_rgba(255,220,80,0.5)]"
+            <button
+              type="button"
+              onClick={onToggleFavorite}
+              aria-pressed={isFavorite}
+              aria-label={isFavorite ? `Remove ${city} from favorites` : `Add ${city} to favorites`}
+              className="shrink-0 cursor-pointer rounded-full border border-white/20 bg-white/10 p-2.5 transition hover:bg-white/20 focus-visible:outline-2 focus-visible:outline-white"
+            >
+              <Star
+                size={22}
+                aria-hidden="true"
+                className={isFavorite ? "fill-[#FFB7CE] text-[#FFB7CE]" : ""}
               />
-            )}
+            </button>
+          </div>
 
-            {isCloudy && (
-              <div className="relative">
-
-                <SunMedium
-                size={200}
-                  strokeWidth={1.2}
-                  className="absolute -right-3 -top-5 fill-yellow-300 text-yellow-200 drop-shadow-[0_0_25px_rgba(255,220,80,0.5)]"
-                />
-
-                <Cloud
-                size={200}
-                  strokeWidth={1.2}
-                  className="relative fill-white text-white drop-shadow-xl"
-                />
-
+          <div className="mt-4 flex flex-col-reverse items-center justify-between gap-4 sm:flex-row sm:items-start">
+            <div className="w-full">
+              <div className="flex items-start">
+                <span className="text-8xl font-light leading-none tracking-tight sm:text-[125px]">
+                  {formatTemp(current.temperature, units.temp)}
+                </span>
+                <span className="mt-3 text-3xl font-light">°{units.temp.toUpperCase()}</span>
               </div>
-            )}
 
-            {!isSunny && !isCloudy && (
-              <Cloud
-                size={200}
-                strokeWidth={1.2}
-                className="fill-white/80 text-white drop-shadow-xl"
-              />
-            )}
+              <p className="mt-4 text-2xl font-medium">{label}</p>
 
+              <div className="mt-4 flex flex-wrap items-center gap-x-6 gap-y-2 text-white/80">
+                <span className="flex items-center gap-2">
+                  <Thermometer size={20} aria-hidden="true" />
+                  Feels like {formatTemp(current.feelsLike, units.temp)}°
+                </span>
+                <span className="flex items-center gap-3">
+                  <span className="flex items-center gap-1" title="Today's high">
+                    <ArrowUp size={18} aria-hidden="true" />
+                    {formatTemp(today.max, units.temp)}°
+                  </span>
+                  <span className="flex items-center gap-1" title="Today's low">
+                    <ArrowDown size={18} aria-hidden="true" />
+                    {formatTemp(today.min, units.temp)}°
+                  </span>
+                </span>
+              </div>
+            </div>
+
+            <div className="shrink-0 sm:pr-2">
+              <HeroIcon code={current.code} />
+            </div>
           </div>
-
         </div>
+      </Panel>
 
+      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+        {stats.map((stat) => (
+          <StatTile key={stat.label} {...stat} />
+        ))}
       </div>
-       </div>
-     <div className=" grid grid-cols-4 gap-3 relative mx-auto mt-2 w-[960px] mr-3 text-white ">
-
-          <div className="flex flex-col items-center rounded-2xl border border-white/15  px-3 py-4  transition hover:bg-white/15 shadow-2xl backdrop-blur-xxl ">
-
-            <Droplets
-              size={27}
-              strokeWidth={1.7}
-              className="mb-2 text-white"
-            />
-
-            <p className="text-xs text-white/70">
-              Humidity
-            </p>
-
-            <p className="mt-1 text-lg font-semibold">
-              {humidity !== undefined ? `${humidity}%` : "--"}
-            </p>
-
-          </div>
-
-
-      
-          <div className="flex flex-col items-center rounded-2xl border border-white/15 bg-white/10 px-3 py-4 backdrop-blur-md transition hover:bg-white/15">
-
-            <Wind
-              size={27}
-              strokeWidth={1.7}
-              className="mb-2 text-white"
-            />
-
-            <p className="text-xs text-white/70">
-              Wind
-            </p>
-
-            <p className="mt-1 text-lg font-semibold">
-              {windspeed !== undefined
-                ? `${Math.round(windspeed)} km/h`
-                : "--"}
-            </p>
-
-          </div>
-
-
-          <div className="flex flex-col items-center rounded-2xl border border-white/15 bg-white/10 px-3 py-4 backdrop-blur-md">
-
-            <Gauge
-              size={27}
-              strokeWidth={1.7}
-              className="mb-2 text-white"
-            />
-
-            <p className="text-xs text-white/70">
-              Pressure
-            </p>
-
-            <p className="mt-1 text-lg font-semibold">
-              {pressure !== undefined
-                ? `${pressure} hPa`
-                : "--"}
-            </p>
-
-          </div>
-
-
-     
-          <div className="flex flex-col items-center rounded-2xl border border-white/15 bg-white/10 px-3 py-4 backdrop-blur-md">
-
-            <Eye
-              size={27}
-              strokeWidth={1.7}
-              className="mb-2 text-white"
-            />
-
-            <p className="text-xs text-white/70">
-              Visibility
-            </p>
-
-            <p className="mt-1 text-lg font-semibold">
-              {visibility !== undefined
-                ? `${visibility} km`
-                : "--"}
-            </p>
-
-          </div>
-
-        </div></>
-   
+    </>
   );
 };
 

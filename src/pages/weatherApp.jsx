@@ -1,203 +1,129 @@
-import { useState,useEffect } from "react";
+import { useState } from "react";
+import { CloudOff, MapPin } from "lucide-react";
+import useWeather from "../hooks/useWeather";
+import useAirQuality from "../hooks/useAirQuality";
+import useFavorites from "../hooks/useFavorites";
+import useLocalStorage from "../hooks/useLocalStorage";
+import { DEFAULT_UNITS } from "../utils/units";
 import SearchBar from "../components/SearchBar";
 import WeatherCard from "../components/WeatherCard";
- import LeftBar from"../components/leftBar"
- import Forcaste from "../components/Forcaste"
-function  WeatherApp() {
-  const [city, setCity] = useState("");
-  const [weatherData, setWeatherData] = useState(null);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState(null);
-  const [date, setDate] = useState(new Date());
-  const [userCountry, setUserCountry] = useState(null);
-  
+import LeftBar from "../components/leftBar";
+import Forcaste from "../components/Forcaste";
+import DailyForecast from "../components/DailyForecast";
+import AirQuality from "../components/AirQuality";
+import Favorites from "../components/Favorites";
+import Settings from "../components/Settings";
+import WeatherSkeleton from "../components/WeatherSkeleton";
+import StateMessage from "../components/StateMessage";
 
-  const GEO_ENDPOINT = "https://geocoding-api.open-meteo.com/v1/search";
-  const WEATHER_ENDPOINT = "https://api.open-meteo.com/v1/forecast";
-  const FCT_ENDPOINT="https://api.open-meteo.com/v1/forecast"
+const WEATHER_VIEWS = ["today", "forecast", "air"];
 
-const getCapitalCity = (countryCode) => {
-  const capitals = {
-    'DZ': 'Algiers',
-    'FR': 'Paris',
-    'US': 'Washington, D.C.',
-    'GB': 'London',
-    'DE': 'Berlin',
-    'IT': 'Rome',
-    'ES': 'Madrid',
-    'CA': 'Ottawa',
-    'AU': 'Canberra',
-    'JP': 'Tokyo',
-    'CN': 'Beijing',
-    'IN': 'New Delhi',
-    'BR': 'Brasília',
-    'RU': 'Moscow',
-    'ZA': 'Pretoria',
-    'EG': 'Cairo',
-    'NG': 'Abuja',
-    'KE': 'Nairobi',
-    'MA': 'Rabat',
-    'TN': 'Tunis',
+function WeatherApp() {
+  const [view, setView] = useState("today");
+  const { query, setQuery, weather, loading, error, search } = useWeather();
+  const air = useAirQuality(weather?.latitude, weather?.longitude);
+  const { favorites, isFavorite, toggle, clear } = useFavorites();
+  const [storedUnits, setUnits] = useLocalStorage("weather:units", DEFAULT_UNITS);
+  const units = { ...DEFAULT_UNITS, ...storedUnits };
+
+  const place = weather && { city: weather.city, country: weather.country };
+
+  const openFavorite = (fav) => {
+    setQuery(fav.city);
+    search(fav.city);
+    setView("today");
   };
-  return capitals[countryCode] || 'Algiers';
-};
-  const getWeather = async (cityName = city) => {
-    if (!cityName.trim()) return;
 
-    setLoading(true);
-    setError(null);
-
-    try {
-      const geoResponse = await fetch(
-        `${GEO_ENDPOINT}?name=${encodeURIComponent(cityName)}&count=1`
-      );
-
-      if (!geoResponse.ok) {
-        throw new Error("Failed to fetch city data");
-      }
-
-      const geoData = await geoResponse.json();
-
-      if (!geoData.results || geoData.results.length === 0) {
-        throw new Error("City not found");
-      }
-
-      const { latitude, longitude, name, country } = geoData.results[0];
-
-      
-     const forecastResponse = await fetch(
-  `${FCT_ENDPOINT}?latitude=${latitude}&longitude=${longitude}&hourly=temperature_2m,apparent_temperature,precipitation_probability,weather_code,wind_speed_10m&timezone=auto`
-);
-
-      if(!forecastResponse.ok){
-        throw new Error(" failed to fetch  hourly forcast data")
-      }
-       const forecastData = await forecastResponse.json();
-        if(!forecastData.hourly){
-           throw new Error("foecast not found")
-        }
-console.log(forecastData)
-     const weatherResponse = await fetch(
-  `${WEATHER_ENDPOINT}?latitude=${latitude}&longitude=${longitude}&current=temperature_2m,relative_humidity_2m,apparent_temperature,pressure_msl,visibility,wind_speed_10m,weather_code&timezone=auto`
-);
-
-      if (!weatherResponse.ok) {
-        throw new Error("Failed to fetch weather data");
-      }
-
-      const weatherData = await weatherResponse.json();
-
-     
-     setWeatherData({
-  cityName: name,
-  country: country,
-  latitude,
-  longitude,
-
- 
-  temperature: weatherData.current.temperature_2m,
-  feelsLike: weatherData.current.apparent_temperature,
-  humidity: weatherData.current.relative_humidity_2m,
-  pressure: weatherData.current.pressure_msl,
-  visibility: weatherData.current.visibility,
-  windspeed: weatherData.current.wind_speed_10m,
-  weathercode: weatherData.current.weather_code,
-  time: weatherData.current.time,
-
- 
-  hourly_temperature: forecastData.hourly.temperature_2m,
-  hourly_weather_code: forecastData.hourly.weather_code,
-  precipitation_probability:
-    forecastData.hourly.precipitation_probability,
-  wind_speed_10m: forecastData.hourly.wind_speed_10m,
-  forecast_time: forecastData.hourly.time,
-});
-    } catch (err) {
-      setError(err.message);
-      setWeatherData(null);
-    } finally {
-      setLoading(false);
-    }
-  };
-  const detectUserLocation = async () => {
-  try {
-    const response = await fetch('https://ipapi.co/json/');
-    const data = await response.json();
-    
-    if (data.country_name) {
-      setUserCountry(data.country_name);
-      const defaultCity = getCapitalCity(data.country_code);
-      if (defaultCity) {
-        setCity(defaultCity);
-        getWeather(defaultCity);
-      }
-    }
-  } catch (error) {
-    console.error("Failed to detect location:", error);
-    setCity("Algiers");
-    getWeather("Algiers");
-  }
-}; 
-useEffect(() => {
-  detectUserLocation();
-}, []);
   return (
-  <div
-    className="min-h-screen bg-cover bg-center bg-no-repeat overflow-x-hidden"
-    style={{ backgroundImage: "url('/bg.jpg')" }}
-  >
-    <LeftBar />
+    <div
+      className="min-h-screen bg-cover bg-fixed bg-center bg-no-repeat"
+      style={{ backgroundImage: "url('/bg.jpg')" }}
+    >
+      <LeftBar view={view} onChange={setView} />
 
-    <div className="flex flex-col items-center pl-[260px]">
-      
-      <SearchBar
-        city={city}
-        setCity={setCity}
-        getCity={getWeather}
-      />
+      <div className="lg:pl-64">
+        <main className="mx-auto flex w-full max-w-5xl flex-col gap-4 px-4 pb-28 pt-5 sm:px-6 lg:pb-10">
+          {WEATHER_VIEWS.includes(view) && (
+            <>
+              <SearchBar city={query} setCity={setQuery} onSearch={search} loading={loading} />
 
-      {loading && (
-        <p className="mt-4 text-white">
-          Loading...
-        </p>
-      )}
+              {error && (
+                <StateMessage
+                  isError
+                  icon={CloudOff}
+                  title={error}
+                  message={
+                    error === "City not found"
+                      ? "Check the spelling or try a nearby city."
+                      : "Check your connection and try again."
+                  }
+                  action={{ label: "Try again", onClick: () => search(query) }}
+                />
+              )}
 
-      {error && (
-        <p className="mt-4 text-red-500">
-          {error}
-        </p>
-      )}
+              {loading && !weather && <WeatherSkeleton />}
 
-      {weatherData && (
-        <>
-          <WeatherCard
-            city={weatherData.cityName}
-            country={weatherData.country}
-            temperature={weatherData.temperature}
-            feelsLike={weatherData.feelsLike}
-            windspeed={weatherData.windspeed}
-            weathercode={weatherData.weathercode}
-            humidity={weatherData.humidity}
-            pressure={weatherData.pressure}
-            visibility={weatherData.visibility}
-            date={date}
-          />
+              {weather && (
+                <div
+                  key={view}
+                  aria-busy={loading}
+                  className={`fade-in flex flex-col gap-4 transition-opacity ${
+                    loading ? "opacity-60" : ""
+                  }`}
+                >
+                  {view === "today" && (
+                    <>
+                      <WeatherCard
+                        weather={weather}
+                        units={units}
+                        isFavorite={isFavorite(place)}
+                        onToggleFavorite={() => toggle(place)}
+                      />
+                      <Forcaste hours={weather.hourly} units={units} />
+                    </>
+                  )}
+                  {view === "forecast" && <DailyForecast days={weather.daily} units={units} />}
+                  {view === "air" && (
+                    <AirQuality
+                      data={air.data}
+                      loading={air.loading}
+                      error={air.error}
+                      city={weather.city}
+                    />
+                  )}
+                </div>
+              )}
 
-          <Forcaste
-            time={weatherData.forecast_time}
-            temperature={weatherData.hourly_temperature}
-            hourly_weather_code={weatherData.hourly_weather_code}
-            precipitation_probability={
-              weatherData.precipitation_probability
-            }
-            wind_speed_10m={weatherData.wind_speed_10m}
-          />
-        </>
-      )}
+              {!weather && !loading && !error && (
+                <StateMessage
+                  icon={MapPin}
+                  title="Search for a city"
+                  message="Type a city name above to see its current weather and forecast."
+                />
+              )}
+            </>
+          )}
 
+          {view === "favorites" && (
+            <div className="fade-in">
+              <Favorites favorites={favorites} onSelect={openFavorite} onRemove={toggle} />
+            </div>
+          )}
+
+          {view === "settings" && (
+            <div className="fade-in">
+              <Settings
+                units={units}
+                onChange={setUnits}
+                favoritesCount={favorites.length}
+                onClearFavorites={clear}
+              />
+            </div>
+          )}
+        </main>
+      </div>
     </div>
-  </div>
-);
+  );
 }
 
 export default WeatherApp;

@@ -1,73 +1,41 @@
-import React from "react";
-import {
-  CloudSun,
-  House,
-  CalendarDays,
-  Wind,
-  Star,
-  Settings,
-} from "lucide-react";
+import { CloudSun, House, CalendarDays, Wind, Star, Settings } from "lucide-react";
 
-const LeftBar = () => {
-  const style =
-    "flex items-center pl-10 ml-2 gap-4 px-4 py-3 w-[250px] text-white rounded-md transition-all duration-200 hover:bg-[#FFB7CE]/80 hover:shadow-md hover:cursor-pointer  hover:mr-4 hover:ml-4 ";
+const NAV_ITEMS = [
+  { id: "today", label: "Today", icon: House },
+  { id: "forecast", label: "Forecast", icon: CalendarDays },
+  { id: "air", label: "Air Quality", icon: Wind },
+  { id: "favorites", label: "Favorites", icon: Star },
+  { id: "settings", label: "Settings", icon: Settings },
+];
 
-  return (
-    <div
-      className="
-        fixed left-0 top-0 bottom-0
-        w-70 h-screen
-        bg-[#3E8EDE]/60
-        backdrop-blur-lg
-        border-r border-white/15
-        rounded-r-xl
-        shadow-[10px_0_40px_rgba(30,27,75,0.15)]
-        text-white
-        z-100
-      "
-    >
-      {/* Logo */}
-      <div className="flex items-center gap-3 px-6 pt-8 pb-8">
-        <CloudSun size={30} />
-        <h2 className="text-xl font-bold">Weather</h2>
-      </div>
-
-      {/* Navigation */}
-      <div className="flex flex-col gap-4">
-
-        {/* Today */}
-        <div className={`${style} bg-[#FFB7CE]/80`}>
-          <House size={20} />
-          <p>Today</p>
-        </div>
-
-        {/* Forecast */}
-        <div className={style}>
-          <CalendarDays size={20} />
-          <p>Forecast</p>
-        </div>
-
-        {/* Air Quality */}
-        <div className={style}>
-          <Wind size={20} />
-          <p>Air Quality</p>
-        </div>
-
-        {/* Favorites */}
-        <div className={style}>
-          <Star size={20} />
-          <p>Favorites</p>
-        </div>
-
-      
-        <div className={style}>
-          <Settings size={20} />
-          <p>Settings</p>
-        </div>
-
-      </div>
+const LeftBar = ({ view, onChange }) => (
+  <nav
+    aria-label="Main navigation"
+    className="fixed inset-x-0 bottom-0 z-50 border-t border-white/15 bg-[#3E8EDE]/70 text-white shadow-[0_-10px_40px_rgba(30,27,75,0.15)] backdrop-blur-lg lg:inset-y-0 lg:right-auto lg:w-64 lg:rounded-r-xl lg:border-r lg:border-t-0 lg:bg-[#3E8EDE]/60 lg:shadow-[10px_0_40px_rgba(30,27,75,0.15)]"
+  >
+    <div className="hidden items-center gap-3 px-6 pb-8 pt-8 lg:flex">
+      <CloudSun size={30} aria-hidden="true" />
+      <span className="text-xl font-bold">Weather</span>
     </div>
-  );
-};
+
+    <ul className="flex gap-1 px-2 py-1 lg:flex-col lg:gap-4 lg:px-3 lg:py-0">
+      {NAV_ITEMS.map(({ id, label, icon: Icon }) => (
+        <li key={id} className="flex flex-1 lg:flex-none">
+          <button
+            type="button"
+            aria-current={view === id ? "page" : undefined}
+            onClick={() => onChange(id)}
+            className={`flex w-full cursor-pointer flex-col items-center gap-1 rounded-md px-2 py-2 text-xs text-white transition-all duration-200 hover:bg-[#FFB7CE]/80 hover:shadow-md focus-visible:outline-2 focus-visible:outline-white lg:flex-row lg:gap-4 lg:px-6 lg:py-3 lg:text-base lg:hover:translate-x-1 ${
+              view === id ? "bg-[#FFB7CE]/80" : ""
+            }`}
+          >
+            <Icon size={20} aria-hidden="true" />
+            <span>{label}</span>
+          </button>
+        </li>
+      ))}
+    </ul>
+  </nav>
+);
 
 export default LeftBar;
